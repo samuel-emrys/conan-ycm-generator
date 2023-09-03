@@ -1,0 +1,6 @@
+.github/*
+venv/*
+README.md
+LICENSE
+.gitignore
+
