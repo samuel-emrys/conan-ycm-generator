@@ -6,6 +6,15 @@ from conan.tools.files import save
 def prefixed(prefix, values):
     return [prefix + x for x in values]
 
+def cppstd_to_flag(cppstd: str) -> str:
+    if not cppstd:
+        # Default to c++14 to account for older libraries
+        return "c++14"
+    if "gnu" in cppstd:
+        version = cppstd.split("gnu")[1]
+        return f"gnu++{version}"
+    return f"c++{cppstd}"
+
 class ycm:
 
     def __init__(self, conanfile):
@@ -59,7 +68,9 @@ def DirectoryOfThisScript():
 # compilation database set (by default, one is not set).
 # CHANGE THIS LIST OF FLAGS. YES, THIS IS THE DROID YOU HAVE BEEN LOOKING FOR.
 flags = [
- '-x', 'c++'
+ '--std={cxx_std}',
+ '-x',
+ 'c++',
 ]
 
 with open(".conan_ycm_path") as f:
@@ -180,7 +191,7 @@ def Settings( filename, **kwargs ):
   _logger.info("Final flags for %s are %s" % (filename, ' '.join(final_flags)))
 
   return {{
-    'flags': final_flags + ["-I/usr/include", "-I/usr/include/c++/{cxx_version}"],
+    'flags': final_flags + ["-I./include", "-I/usr/include", "-I/usr/include/c++/{cxx_version}"],
     'do_cache': True
   }}
 """
@@ -198,11 +209,12 @@ def Settings( filename, **kwargs ):
 
         cxx_version = ""
         try:
-            cxx_version = str(graph.root.conanfile.settings.compiler.version).split(".")[0]
+            cxx_version = str(self._conanfile.settings.compiler.version).split(".")[0]
         except Exception:
             pass
 
-        ycm_data = self._template.format(cxx_version=cxx_version)
+        cxx_std = cppstd_to_flag(str(self._conanfile.settings.get_safe("compiler.cppstd")))
+        ycm_data = self._template.format(cxx_std=cxx_std, cxx_version=cxx_version)
         flags_data = json.dumps(conan_flags, indent=4)
 
         save(self._conanfile, os.path.join(self._conanfile.generators_folder, "conan_ycm_extra_conf.py"), ycm_data)
